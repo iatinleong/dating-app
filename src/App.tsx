@@ -4,12 +4,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import Swipe from "./pages/Swipe";
+import Explore from "./pages/Explore";
 import Matches from "./pages/Matches";
 import Messages from "./pages/Messages";
 import Chat from "./pages/Chat";
 import ProfileSetup from "./pages/ProfileSetup";
 import ProfilePreview from "./pages/ProfilePreview";
+import Auth from "./pages/Auth";
+import Like from "./pages/Like";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,7 +24,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/swipe" element={<Swipe />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/explore" element={<Explore />} />
+          <Route path="/like" element={<Like />} />
           <Route path="/matches" element={<Matches />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/chat/:userId" element={<Chat />} />

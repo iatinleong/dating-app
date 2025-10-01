@@ -1,10 +1,22 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Heart, X, Star, Settings, MessageCircle } from "lucide-react";
+import { Heart, X, Star, Settings, MessageCircle, Filter, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import UserCard from "@/components/UserCard";
 import BottomNav from "@/components/BottomNav";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 // Mock data
 const mockUsers = [
@@ -54,7 +66,7 @@ const mockUsers = [
   },
 ];
 
-const Swipe = () => {
+const Explore = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [users, setUsers] = useState(mockUsers);
@@ -64,6 +76,15 @@ const Swipe = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const startPos = useRef({ x: 0, y: 0 });
+
+  // Filter states
+  const [hardFilters, setHardFilters] = useState({
+    ageMin: "",
+    ageMax: "",
+    gender: "",
+    location: "",
+  });
+  const [aiPrompt, setAiPrompt] = useState("");
 
   const currentUser = users[currentIndex];
 
@@ -156,30 +177,135 @@ const Swipe = () => {
     <div className="min-h-screen bg-gradient-soft flex flex-col pb-20">
       {/* Header */}
       <header className="p-4 flex items-center justify-between bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/profile-preview")}
-          className="rounded-full"
-        >
-          <Settings className="w-5 h-5" />
-        </Button>
-        
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-gradient-romantic rounded-full flex items-center justify-center">
             <Heart className="w-5 h-5 text-primary-foreground fill-current" />
           </div>
-          <span className="font-bold text-xl">Heart Match</span>
+          <span className="font-bold text-xl">Explore</span>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/messages")}
-          className="rounded-full"
-        >
-          <MessageCircle className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Hard Filters Dialog */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Filter className="w-5 h-5" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>硬性條件篩選</DialogTitle>
+                <DialogDescription>設定年齡、性別、地點等基本條件</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>最小年齡</Label>
+                    <Input
+                      type="number"
+                      placeholder="18"
+                      value={hardFilters.ageMin}
+                      onChange={(e) =>
+                        setHardFilters({ ...hardFilters, ageMin: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>最大年齡</Label>
+                    <Input
+                      type="number"
+                      placeholder="50"
+                      value={hardFilters.ageMax}
+                      onChange={(e) =>
+                        setHardFilters({ ...hardFilters, ageMax: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>性別</Label>
+                  <Select
+                    value={hardFilters.gender}
+                    onValueChange={(value) =>
+                      setHardFilters({ ...hardFilters, gender: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇性別" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">男</SelectItem>
+                      <SelectItem value="female">女</SelectItem>
+                      <SelectItem value="all">全部</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>地點</Label>
+                  <Input
+                    placeholder="例如：台北市"
+                    value={hardFilters.location}
+                    onChange={(e) =>
+                      setHardFilters({ ...hardFilters, location: e.target.value })
+                    }
+                  />
+                </div>
+                <Button
+                  variant="gradient"
+                  className="w-full"
+                  onClick={() => {
+                    toast({
+                      title: "篩選已套用",
+                      description: "正在根據你的條件尋找配對",
+                    });
+                  }}
+                >
+                  套用篩選
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* AI Prompt Dialog */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Sparkles className="w-5 h-5" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>AI 智能配對</DialogTitle>
+                <DialogDescription>
+                  描述你理想對象的特質，AI 會為你找到最匹配的人
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>描述你的理想對象</Label>
+                  <Textarea
+                    placeholder="例如：我希望找一個喜歡運動、有幽默感、對生活充滿熱情的人..."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    rows={5}
+                  />
+                </div>
+                <Button
+                  variant="gradient"
+                  className="w-full"
+                  onClick={() => {
+                    toast({
+                      title: "AI 配對啟動",
+                      description: "正在為你尋找最佳匹配...",
+                    });
+                  }}
+                >
+                  開始 AI 配對
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </header>
 
       {/* Card Stack */}
@@ -266,4 +392,4 @@ const Swipe = () => {
   );
 };
 
-export default Swipe;
+export default Explore;

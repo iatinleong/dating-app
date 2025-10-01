@@ -31,18 +31,18 @@ const Index = () => {
           <Button 
             variant="gradient" 
             size="lg"
-            onClick={() => navigate("/swipe")}
+            onClick={() => navigate("/auth?mode=signup")}
             className="w-full text-lg h-14"
           >
-            開始配對
+            註冊
           </Button>
           <Button 
             variant="outline" 
             size="lg"
-            onClick={() => navigate("/profile-setup")}
+            onClick={() => navigate("/auth?mode=login")}
             className="w-full text-lg h-14"
           >
-            建立個人資料
+            登錄
           </Button>
         </div>
 

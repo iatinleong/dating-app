@@ -7,10 +7,10 @@ const BottomNav = () => {
   const location = useLocation();
 
   const navItems = [
-    { icon: Heart, label: "探索", path: "/swipe" },
-    { icon: Users, label: "配對", path: "/matches" },
-    { icon: MessageCircle, label: "訊息", path: "/messages" },
-    { icon: User, label: "我的", path: "/profile-preview" },
+    { icon: Heart, label: "Like", path: "/like" },
+    { icon: Users, label: "Explore", path: "/explore" },
+    { icon: MessageCircle, label: "Chat", path: "/messages" },
+    { icon: User, label: "Profile", path: "/profile-preview" },
   ];
 
   return (
