@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Heart, X, Star, Settings, MessageCircle, Filter, Sparkles } from "lucide-react";
+import { Heart, X, Star, Settings, MessageCircle, Filter, Sparkles, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import UserCard from "@/components/UserCard";
 import BottomNav from "@/components/BottomNav";
@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
 
 // Mock data
 const mockUsers = [
@@ -79,12 +80,46 @@ const Explore = () => {
 
   // Filter states
   const [hardFilters, setHardFilters] = useState({
-    ageMin: "",
-    ageMax: "",
+    ageRange: [18, 50] as number[],
     gender: "",
-    location: "",
+    distanceRange: [5] as number[],
   });
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationName, setLocationName] = useState("偵測中...");
   const [aiPrompt, setAiPrompt] = useState("");
+
+  // Auto-detect user location on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude });
+          setLocationName(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
+          toast({
+            title: "位置偵測成功",
+            description: "已自動偵測你的當前位置",
+          });
+        },
+        (error) => {
+          console.error("Location error:", error);
+          setLocationName("無法偵測位置");
+          toast({
+            title: "無法偵測位置",
+            description: "請允許瀏覽器存取位置權限",
+            variant: "destructive",
+          });
+        }
+      );
+    } else {
+      setLocationName("不支援定位");
+      toast({
+        title: "不支援定位",
+        description: "你的瀏覽器不支援地理位置功能",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   const currentUser = users[currentIndex];
 
@@ -192,36 +227,33 @@ const Explore = () => {
                 <Filter className="w-5 h-5" />
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>硬性條件篩選</DialogTitle>
-                <DialogDescription>設定年齡、性別、地點等基本條件</DialogDescription>
+                <DialogDescription>設定年齡、性別、距離等基本條件</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>最小年齡</Label>
-                    <Input
-                      type="number"
-                      placeholder="18"
-                      value={hardFilters.ageMin}
-                      onChange={(e) =>
-                        setHardFilters({ ...hardFilters, ageMin: e.target.value })
-                      }
-                    />
+              <div className="space-y-6 py-4">
+                {/* Age Range Slider */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>年齡範圍</Label>
+                    <span className="text-sm text-muted-foreground">
+                      {hardFilters.ageRange[0]} - {hardFilters.ageRange[1]} 歲
+                    </span>
                   </div>
-                  <div className="space-y-2">
-                    <Label>最大年齡</Label>
-                    <Input
-                      type="number"
-                      placeholder="50"
-                      value={hardFilters.ageMax}
-                      onChange={(e) =>
-                        setHardFilters({ ...hardFilters, ageMax: e.target.value })
-                      }
-                    />
-                  </div>
+                  <Slider
+                    min={18}
+                    max={80}
+                    step={1}
+                    value={hardFilters.ageRange}
+                    onValueChange={(value) =>
+                      setHardFilters({ ...hardFilters, ageRange: value })
+                    }
+                    className="w-full"
+                  />
                 </div>
+
+                {/* Gender Selection */}
                 <div className="space-y-2">
                   <Label>性別</Label>
                   <Select
@@ -240,23 +272,55 @@ const Explore = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Location Display */}
                 <div className="space-y-2">
-                  <Label>地點</Label>
-                  <Input
-                    placeholder="例如：台北市"
-                    value={hardFilters.location}
-                    onChange={(e) =>
-                      setHardFilters({ ...hardFilters, location: e.target.value })
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    當前位置
+                  </Label>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm">{locationName}</p>
+                  </div>
+                  {!userLocation && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.location.reload()}
+                      className="w-full"
+                    >
+                      重新偵測位置
+                    </Button>
+                  )}
+                </div>
+
+                {/* Distance Range Slider */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>搜尋距離</Label>
+                    <span className="text-sm text-muted-foreground">
+                      {hardFilters.distanceRange[0]} 公里內
+                    </span>
+                  </div>
+                  <Slider
+                    min={1}
+                    max={100}
+                    step={1}
+                    value={hardFilters.distanceRange}
+                    onValueChange={(value) =>
+                      setHardFilters({ ...hardFilters, distanceRange: value })
                     }
+                    className="w-full"
                   />
                 </div>
+
                 <Button
                   variant="gradient"
                   className="w-full"
                   onClick={() => {
                     toast({
                       title: "篩選已套用",
-                      description: "正在根據你的條件尋找配對",
+                      description: `年齡 ${hardFilters.ageRange[0]}-${hardFilters.ageRange[1]} 歲，距離 ${hardFilters.distanceRange[0]} 公里內`,
                     });
                   }}
                 >
