@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Swipe from "./pages/Swipe";
+import Matches from "./pages/Matches";
+import Messages from "./pages/Messages";
+import Chat from "./pages/Chat";
 import ProfileSetup from "./pages/ProfileSetup";
 import ProfilePreview from "./pages/ProfilePreview";
 import NotFound from "./pages/NotFound";
@@ -20,6 +23,9 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/swipe" element={<Swipe />} />
+          <Route path="/matches" element={<Matches />} />
+          <Route path="/messages" element={<Messages />} />
+          <Route path="/chat/:userId" element={<Chat />} />
           <Route path="/profile-setup" element={<ProfileSetup />} />
           <Route path="/profile-preview" element={<ProfilePreview />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

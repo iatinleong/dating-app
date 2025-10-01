@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Heart, X, Star, Settings, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import UserCard from "@/components/UserCard";
+import BottomNav from "@/components/BottomNav";
 import { useToast } from "@/hooks/use-toast";
 
 // Mock data
@@ -152,9 +153,9 @@ const Swipe = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-soft flex flex-col">
+    <div className="min-h-screen bg-gradient-soft flex flex-col pb-20">
       {/* Header */}
-      <header className="p-4 flex items-center justify-between">
+      <header className="p-4 flex items-center justify-between bg-card/50 backdrop-blur-sm sticky top-0 z-40">
         <Button
           variant="ghost"
           size="icon"
@@ -259,6 +260,8 @@ const Swipe = () => {
           <Heart className="w-8 h-8" />
         </Button>
       </div>
+
+      <BottomNav />
     </div>
   );
 };

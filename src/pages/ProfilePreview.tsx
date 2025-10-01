@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import BottomNav from "@/components/BottomNav";
 import { useNavigate } from "react-router-dom";
 import { Heart, MapPin, Briefcase, GraduationCap, Languages, Activity, Wine, Cigarette, UtensilsCrossed, ArrowLeft, Edit } from "lucide-react";
 
@@ -213,6 +214,8 @@ const ProfilePreview = () => {
           </Button>
         </div>
       </div>
+
+      <BottomNav />
     </div>
   );
 };
