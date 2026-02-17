@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Heart } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -14,12 +15,13 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isLogin && password !== confirmPassword) {
       toast({
         title: "密碼不匹配",
@@ -29,13 +31,71 @@ const Auth = () => {
       return;
     }
 
-    // TODO: Implement actual authentication with Lovable Cloud
-    toast({
-      title: isLogin ? "登錄成功！" : "註冊成功！",
-      description: isLogin ? "歡迎回來" : "歡迎加入 Heart Match",
-    });
-    
-    navigate("/explore");
+    // Basic password validation
+    if (password.length < 6) {
+      toast({
+        title: "密碼太短",
+        description: "密碼至少需要 6 個字元",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      if (isLogin) {
+        // Login with Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "登錄成功！",
+          description: "歡迎回來",
+        });
+
+        // Check if user has completed profile setup
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user?.id)
+          .single();
+
+        if (!profile) {
+          navigate("/profile-setup");
+        } else {
+          navigate("/explore");
+        }
+      } else {
+        // Sign up with Supabase
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "註冊成功！",
+          description: "請前往設定個人資料",
+        });
+
+        navigate("/profile-setup");
+      }
+    } catch (error: any) {
+      console.error("Authentication error:", error);
+      toast({
+        title: "錯誤",
+        description: error.message || "操作失敗，請重試",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -97,8 +157,13 @@ const Auth = () => {
                 </div>
               )}
 
-              <Button type="submit" variant="gradient" className="w-full">
-                {isLogin ? "登錄" : "註冊"}
+              <Button
+                type="submit"
+                variant="gradient"
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? "處理中..." : (isLogin ? "登錄" : "註冊")}
               </Button>
 
               <div className="text-center text-sm">

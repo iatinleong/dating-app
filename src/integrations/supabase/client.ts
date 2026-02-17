@@ -5,12 +5,41 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// Validate environment variables
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  throw new Error(
+    '缺少 Supabase 環境變數。請確認 .env 檔案包含 VITE_SUPABASE_URL 和 VITE_SUPABASE_PUBLISHABLE_KEY'
+  );
+}
+
+// Create safe storage for iOS compatibility
+const createSafeStorage = () => {
+  try {
+    const testKey = '__storage_test__';
+    localStorage.setItem(testKey, 'test');
+    localStorage.removeItem(testKey);
+    return localStorage;
+  } catch (e) {
+    // Fallback to in-memory storage for iOS private mode
+    console.warn('localStorage not available, using in-memory storage');
+    let inMemoryStorage: Record<string, string> = {};
+    return {
+      getItem: (key: string) => inMemoryStorage[key] || null,
+      setItem: (key: string, value: string) => { inMemoryStorage[key] = value; },
+      removeItem: (key: string) => { delete inMemoryStorage[key]; },
+      clear: () => { inMemoryStorage = {}; },
+      key: (index: number) => Object.keys(inMemoryStorage)[index] || null,
+      get length() { return Object.keys(inMemoryStorage).length; }
+    };
+  }
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: createSafeStorage() as any,
     persistSession: true,
     autoRefreshToken: true,
   }
