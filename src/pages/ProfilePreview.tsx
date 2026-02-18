@@ -201,18 +201,6 @@ const ProfilePreview = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* CTA */}
-        <div className="text-center">
-          <Button 
-            variant="gradient" 
-            size="lg"
-            onClick={() => navigate("/")}
-          >
-            <Heart className="w-5 h-5 mr-2" />
-            開始尋找配對
-          </Button>
-        </div>
       </div>
 
       <BottomNav />

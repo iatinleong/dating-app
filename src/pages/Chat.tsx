@@ -42,26 +42,7 @@ const Chat = () => {
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messageText, setMessageText] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      text: "嗨！很高興認識你 😊",
-      sender: "them",
-      timestamp: new Date(Date.now() - 3600000),
-    },
-    {
-      id: "2",
-      text: "你好！我也很高興認識你",
-      sender: "me",
-      timestamp: new Date(Date.now() - 3500000),
-    },
-    {
-      id: "3",
-      text: "看了你的個人資料，發現我們有很多共同興趣",
-      sender: "them",
-      timestamp: new Date(Date.now() - 3400000),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const user = userId ? mockUsers[userId as keyof typeof mockUsers] : null;
 
@@ -156,32 +137,44 @@ const Chat = () => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                message.sender === "me"
-                  ? "bg-gradient-romantic text-primary-foreground"
-                  : "bg-muted text-foreground"
-              }`}
-            >
-              <p className="text-sm">{message.text}</p>
-              <p
-                className={`text-xs mt-1 ${
-                  message.sender === "me"
-                    ? "text-primary-foreground/70"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {formatTime(message.timestamp)}
-              </p>
-            </div>
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <Heart className="w-16 h-16 text-primary/20 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">開始對話</h3>
+            <p className="text-muted-foreground text-sm">
+              和 {user.name} 打個招呼吧！
+            </p>
           </div>
-        ))}
-        <div ref={messagesEndRef} />
+        ) : (
+          <>
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                    message.sender === "me"
+                      ? "bg-gradient-romantic text-primary-foreground"
+                      : "bg-muted text-foreground"
+                  }`}
+                >
+                  <p className="text-sm">{message.text}</p>
+                  <p
+                    className={`text-xs mt-1 ${
+                      message.sender === "me"
+                        ? "text-primary-foreground/70"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {formatTime(message.timestamp)}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </>
+        )}
       </div>
 
       {/* Input */}

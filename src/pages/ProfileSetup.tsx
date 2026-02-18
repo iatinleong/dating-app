@@ -5,9 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Heart, Upload, ArrowLeft } from "lucide-react";
+import { Heart, Upload, ArrowLeft, X, Plus } from "lucide-react";
+import { upsertProfile, uploadPhoto, addPhotoRecord } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProfileData {
   // Required
@@ -43,6 +46,8 @@ const ProfileSetup = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [profileData, setProfileData] = useState<ProfileData>({
     nickname: "",
     birthdate: "",
@@ -58,27 +63,60 @@ const ProfileSetup = () => {
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+    const targetIndex = (e.target as any)._targetIndex;
+
     if (files && files.length > 0) {
-      const newPhotos = Array.from(files);
+      const file = files[0]; // Only take first file
+      const newPhotos = [...profileData.photos];
+
+      if (targetIndex !== undefined && targetIndex < newPhotos.length) {
+        // Replace existing photo
+        newPhotos[targetIndex] = file;
+      } else {
+        // Add new photo
+        newPhotos.push(file);
+      }
+
       setProfileData(prev => ({
         ...prev,
-        photos: [...prev.photos, ...newPhotos]
+        photos: newPhotos
       }));
+
       toast({
         title: "照片已上傳",
-        description: `已選擇 ${newPhotos.length} 張照片`,
+        description: "照片已添加到你的個人資料",
       });
     }
+
+    // Clear the target index
+    delete (e.target as any)._targetIndex;
   };
 
-  const triggerPhotoUpload = () => {
+  const triggerPhotoUpload = (index: number) => {
+    // Store the target index for when file is selected
+    (fileInputRef.current as any)._targetIndex = index;
     fileInputRef.current?.click();
+  };
+
+  const handlePhotoReorder = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+
+    const newPhotos = [...profileData.photos];
+    const [movedPhoto] = newPhotos.splice(fromIndex, 1);
+    newPhotos.splice(toIndex, 0, movedPhoto);
+
+    updateField("photos", newPhotos);
+  };
+
+  const removePhoto = (index: number) => {
+    const newPhotos = profileData.photos.filter((_, i) => i !== index);
+    updateField("photos", newPhotos);
   };
 
   const handleNext = () => {
     if (step === 1) {
       // Validate required fields
-      if (!profileData.nickname || !profileData.birthdate || !profileData.gender || 
+      if (!profileData.nickname || !profileData.birthdate || !profileData.gender ||
           !profileData.height || !profileData.location) {
         toast({
           title: "請填寫所有必填欄位",
@@ -87,8 +125,65 @@ const ProfileSetup = () => {
         });
         return;
       }
+
+      // Validate height range
+      const heightNum = parseInt(profileData.height);
+      if (isNaN(heightNum) || heightNum < 140 || heightNum > 200) {
+        toast({
+          title: "身高範圍錯誤",
+          description: "身高必須在 140-200 cm 之間",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate photos
+      if (profileData.photos.length === 0) {
+        toast({
+          title: "請上傳至少一張照片",
+          description: "照片是必填的",
+          variant: "destructive",
+        });
+        return;
+      }
     }
-    
+
+    if (step === 2) {
+      // Validate languages (required)
+      if (!profileData.languages || profileData.languages.length === 0) {
+        toast({
+          title: "請選擇語言",
+          description: "至少需要選擇一種語言",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (step === 3) {
+      // Validate lifestyle habits (all required)
+      if (!profileData.exercise || !profileData.drinking || !profileData.smoking || !profileData.diet) {
+        toast({
+          title: "請填寫所有生活習慣",
+          description: "運動、飲酒、抽菸、飲食習慣都是必填的",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (step === 4) {
+      // Validate relationship goal (required)
+      if (!profileData.relationshipGoal) {
+        toast({
+          title: "請選擇關係目標",
+          description: "請告訴我們你在尋找什麼樣的關係",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     if (step < 4) {
       setStep(step + 1);
     } else {
@@ -96,12 +191,80 @@ const ProfileSetup = () => {
     }
   };
 
-  const handleSubmit = () => {
-    toast({
-      title: "個人資料已建立！",
-      description: "歡迎來到你的浪漫旅程",
+  const handleSubmit = async () => {
+    setIsLoading(true);
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("未登入");
+      }
+
+      // Upload photos first
+      const photoUrls: string[] = [];
+      for (let i = 0; i < profileData.photos.length; i++) {
+        const photoUrl = await uploadPhoto(profileData.photos[i], user.id);
+        photoUrls.push(photoUrl);
+        await addPhotoRecord(photoUrl, i);
+      }
+
+      // Prepare profile data
+      const profilePayload = {
+        nickname: profileData.nickname,
+        birthdate: profileData.birthdate,
+        gender: profileData.gender as 'male' | 'female',
+        height: parseInt(profileData.height),
+        location: profileData.location,
+        occupation: profileData.occupation,
+        salary: profileData.salary,
+        education: profileData.education,
+        school: profileData.school,
+        religion: profileData.religion,
+        religiosity: profileData.religiosity,
+        languages: profileData.languages,
+        exercise: profileData.exercise,
+        drinking: profileData.drinking,
+        smoking: profileData.smoking,
+        diet: profileData.diet,
+        relationship_goal: profileData.relationshipGoal,
+        bio: profileData.bio,
+      };
+
+      // Save profile to Supabase
+      await upsertProfile(profilePayload);
+
+      toast({
+        title: "個人資料已建立！",
+        description: "歡迎來到你的浪漫旅程",
+      });
+
+      navigate("/explore");
+    } catch (error: any) {
+      console.error("Profile setup error:", error);
+      toast({
+        title: "建立資料失敗",
+        description: error.message || "請稍後再試",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleLanguage = (language: string) => {
+    setProfileData(prev => {
+      const currentLanguages = prev.languages || [];
+      const hasLanguage = currentLanguages.includes(language);
+
+      return {
+        ...prev,
+        languages: hasLanguage
+          ? currentLanguages.filter(l => l !== language)
+          : [...currentLanguages, language]
+      };
     });
-    navigate("/profile-preview");
   };
 
   return (
@@ -139,15 +302,15 @@ const ProfileSetup = () => {
           <CardHeader>
             <CardTitle>
               {step === 1 && "基本資料"}
-              {step === 2 && "個人資訊（選填）"}
-              {step === 3 && "生活習慣（選填）"}
+              {step === 2 && "個人資訊"}
+              {step === 3 && "生活習慣"}
               {step === 4 && "關係目標"}
             </CardTitle>
             <CardDescription>
               {step === 1 && "這些資訊將幫助我們為你找到最適合的配對"}
-              {step === 2 && "這些資訊可以讓配對更精準"}
-              {step === 3 && "分享你的生活方式"}
-              {step === 4 && "告訴我們你在尋找什麼樣的關係"}
+              {step === 2 && "語言是必填項目，其他資訊可以讓配對更精準"}
+              {step === 3 && "所有生活習慣都是必填的"}
+              {step === 4 && "關係目標是必填的，告訴我們你在尋找什麼"}
             </CardDescription>
           </CardHeader>
 
@@ -183,6 +346,7 @@ const ProfileSetup = () => {
                     <SelectContent>
                       <SelectItem value="male">男</SelectItem>
                       <SelectItem value="female">女</SelectItem>
+                      <SelectItem value="other">其他</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -193,9 +357,18 @@ const ProfileSetup = () => {
                     id="height"
                     type="number"
                     placeholder="例如：175"
+                    min="140"
+                    max="200"
                     value={profileData.height}
-                    onChange={(e) => updateField("height", e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const numValue = parseInt(value);
+                      if (value === "" || (numValue >= 140 && numValue <= 200)) {
+                        updateField("height", value);
+                      }
+                    }}
                   />
+                  <p className="text-xs text-muted-foreground">身高範圍：140-200 cm</p>
                 </div>
 
                 <div className="space-y-2">
@@ -232,28 +405,79 @@ const ProfileSetup = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="photos">照片 *</Label>
-                  <div
-                    className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer"
-                    onClick={triggerPhotoUpload}
-                  >
-                    <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-2">點擊上傳照片</p>
-                    <p className="text-xs text-muted-foreground">
-                      {profileData.photos.length > 0
-                        ? `已選擇 ${profileData.photos.length} 張照片`
-                        : "建議上傳至少 3 張照片"}
-                    </p>
-                    <Input
-                      ref={fileInputRef}
-                      id="photos"
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handlePhotoUpload}
-                    />
+                  <Label htmlFor="photos">照片 * (最多 6 張)</Label>
+                  <p className="text-sm text-muted-foreground mb-3">點擊格子上傳照片，拖動照片可調整順序</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[0, 1, 2, 3, 4, 5].map((index) => {
+                      const photo = profileData.photos[index];
+                      const photoUrl = photo ? URL.createObjectURL(photo) : null;
+
+                      return (
+                        <div
+                          key={index}
+                          className={`relative aspect-[3/4] border-2 border-dashed rounded-lg overflow-hidden transition-all ${
+                            draggedIndex === index
+                              ? "border-primary bg-primary/5 scale-95"
+                              : "border-border hover:border-primary"
+                          } ${photo ? "cursor-move" : "cursor-pointer"}`}
+                          onClick={() => !photo && triggerPhotoUpload(index)}
+                          draggable={!!photo}
+                          onDragStart={() => setDraggedIndex(index)}
+                          onDragEnd={() => setDraggedIndex(null)}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.add("border-primary", "bg-primary/5");
+                          }}
+                          onDragLeave={(e) => {
+                            e.currentTarget.classList.remove("border-primary", "bg-primary/5");
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove("border-primary", "bg-primary/5");
+                            if (draggedIndex !== null && photo) {
+                              handlePhotoReorder(draggedIndex, index);
+                            }
+                          }}
+                        >
+                          {photoUrl ? (
+                            <>
+                              <img
+                                src={photoUrl}
+                                alt={`照片 ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                {index + 1}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removePhoto(index);
+                                }}
+                                className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                              <Plus className="w-8 h-8 mb-1" />
+                              <span className="text-xs">添加照片</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
+                  <Input
+                    ref={fileInputRef}
+                    id="photos"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                  />
                 </div>
               </>
             )}
@@ -346,13 +570,33 @@ const ProfileSetup = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="languages">語言</Label>
-                  <Input
-                    id="languages"
-                    placeholder="例如：中文、英文、日文"
-                    value={profileData.languages?.join(", ") || ""}
-                    onChange={(e) => updateField("languages", e.target.value.split(",").map(l => l.trim()))}
-                  />
+                  <Label>語言（可複選）*</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { value: "中文", label: "中文" },
+                      { value: "English", label: "English" },
+                      { value: "台語", label: "台語" },
+                      { value: "客家話", label: "客家話" },
+                      { value: "日本語", label: "日本語" },
+                      { value: "한국어", label: "한국어" },
+                      { value: "Español", label: "Español" },
+                      { value: "Français", label: "Français" },
+                    ].map((lang) => (
+                      <div key={lang.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`lang-${lang.value}`}
+                          checked={profileData.languages?.includes(lang.value) || false}
+                          onCheckedChange={() => toggleLanguage(lang.value)}
+                        />
+                        <label
+                          htmlFor={`lang-${lang.value}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {lang.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
@@ -360,7 +604,7 @@ const ProfileSetup = () => {
             {step === 3 && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="exercise">運動習慣</Label>
+                  <Label htmlFor="exercise">運動習慣 *</Label>
                   <Select value={profileData.exercise} onValueChange={(value) => updateField("exercise", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="選擇運動習慣" />
@@ -375,7 +619,7 @@ const ProfileSetup = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="drinking">飲酒習慣</Label>
+                  <Label htmlFor="drinking">飲酒習慣 *</Label>
                   <Select value={profileData.drinking} onValueChange={(value) => updateField("drinking", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="選擇飲酒習慣" />
@@ -390,7 +634,7 @@ const ProfileSetup = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="smoking">抽菸習慣</Label>
+                  <Label htmlFor="smoking">抽菸習慣 *</Label>
                   <Select value={profileData.smoking} onValueChange={(value) => updateField("smoking", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="選擇抽菸習慣" />
@@ -405,7 +649,7 @@ const ProfileSetup = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="diet">飲食習慣</Label>
+                  <Label htmlFor="diet">飲食習慣 *</Label>
                   <Select value={profileData.diet} onValueChange={(value) => updateField("diet", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="選擇飲食習慣" />
@@ -425,7 +669,7 @@ const ProfileSetup = () => {
             {step === 4 && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="relationshipGoal">你在尋找什麼樣的關係？</Label>
+                  <Label htmlFor="relationshipGoal">你在尋找什麼樣的關係？*</Label>
                   <Select value={profileData.relationshipGoal} onValueChange={(value) => updateField("relationshipGoal", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="選擇關係目標" />
@@ -460,6 +704,7 @@ const ProfileSetup = () => {
                   variant="outline"
                   onClick={() => setStep(step - 1)}
                   className="flex-1"
+                  disabled={isLoading}
                 >
                   上一步
                 </Button>
@@ -468,8 +713,9 @@ const ProfileSetup = () => {
                 variant="gradient"
                 onClick={handleNext}
                 className="flex-1"
+                disabled={isLoading}
               >
-                {step === 4 ? "完成" : "下一步"}
+                {isLoading ? "處理中..." : (step === 4 ? "完成" : "下一步")}
               </Button>
             </div>
           </CardContent>
