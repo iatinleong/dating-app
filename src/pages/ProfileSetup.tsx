@@ -126,6 +126,23 @@ const ProfileSetup = () => {
         return;
       }
 
+      // Validate age (must be 18+)
+      const birthDate = new Date(profileData.birthdate);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      const dayDiff = today.getDate() - birthDate.getDate();
+      const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+
+      if (actualAge < 18) {
+        toast({
+          title: "年齡限制",
+          description: "必須年滿 18 歲才能使用此服務",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Validate height range
       const heightNum = parseInt(profileData.height);
       if (isNaN(heightNum) || heightNum < 140 || heightNum > 200) {
@@ -332,9 +349,11 @@ const ProfileSetup = () => {
                   <Input
                     id="birthdate"
                     type="date"
+                    max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
                     value={profileData.birthdate}
                     onChange={(e) => updateField("birthdate", e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">必須年滿 18 歲</p>
                 </div>
 
                 <div className="space-y-2">
@@ -360,13 +379,7 @@ const ProfileSetup = () => {
                     min="140"
                     max="200"
                     value={profileData.height}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const numValue = parseInt(value);
-                      if (value === "" || (numValue >= 140 && numValue <= 200)) {
-                        updateField("height", value);
-                      }
-                    }}
+                    onChange={(e) => updateField("height", e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">身高範圍：140-200 cm</p>
                 </div>
