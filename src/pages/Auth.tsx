@@ -88,11 +88,34 @@ const Auth = () => {
       }
     } catch (error: any) {
       console.error("Authentication error:", error);
-      toast({
-        title: "錯誤",
-        description: error.message || "操作失敗，請重試",
-        variant: "destructive",
-      });
+
+      // 特別處理 Email 未驗證錯誤
+      if (error.message?.includes("Email not confirmed")) {
+        toast({
+          title: "📧 Email 尚未驗證",
+          description: "請先到 Email 收件匣點擊驗證連結，或聯絡管理員手動驗證",
+          variant: "destructive",
+          duration: 8000,
+        });
+      } else if (error.message?.includes("Invalid login credentials")) {
+        toast({
+          title: "登入失敗",
+          description: "帳號或密碼錯誤，請重新輸入",
+          variant: "destructive",
+        });
+      } else if (error.message?.includes("User already registered")) {
+        toast({
+          title: "此 Email 已註冊",
+          description: "請直接登入，或使用其他 Email",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "錯誤",
+          description: error.message || "操作失敗，請重試",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
