@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA 圖示生成器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #ec4899;
+            text-align: center;
+        }
+        canvas {
+            border: 2px solid #ddd;
+            margin: 20px 0;
+            display: block;
+        }
+        button {
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .preview {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .icon-preview {
+            text-align: center;
+        }
+        .icon-preview img {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .instructions {
+            background: #fef3c7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>❤️ Spark Connect PWA 圖示生成器</h1>
+
+        <div class="instructions">
+            <h3>📝 使用說明：</h3>
+            <ol>
+                <li>點擊下方按鈕生成圖示</li>
+                <li>右鍵點擊圖片「另存新檔」</li>
+                <li>將圖示放到專案的 <code>public/</code> 資料夾</li>
+                <li>確保檔名正確（pwa-192x192.png、pwa-512x512.png 等）</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center;">
+            <button onclick="generateAllIcons()">🎨 生成所有圖示</button>
+        </div>
+
+        <div class="preview" id="preview"></div>
+    </div>
+
+    <script>
+        function generateIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // 漸層背景
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#ec4899'); // pink-500
+            gradient.addColorStop(1, '#8b5cf6'); // purple-500
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // 繪製心形
+            const heartSize = size * 0.5;
+            const x = size / 2;
+            const y = size / 2;
+
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+
+            // 心形路徑
+            const topCurveHeight = heartSize * 0.3;
+            ctx.moveTo(x, y + topCurveHeight);
+
+            // 左側曲線
+            ctx.bezierCurveTo(
+                x, y,
+                x - heartSize / 2, y,
+                x - heartSize / 2, y + topCurveHeight
+            );
+
+            ctx.bezierCurveTo(
+                x - heartSize / 2, y + (heartSize + topCurveHeight) / 2,
+                x, y + (heartSize + topCurveHeight) / 1.2,
+                x, y + heartSize
+            );
+
+            // 右側曲線
+            ctx.bezierCurveTo(
+                x, y + (heartSize + topCurveHeight) / 1.2,
+                x + heartSize / 2, y + (heartSize + topCurveHeight) / 2,
+                x + heartSize / 2, y + topCurveHeight
+            );
+
+            ctx.bezierCurveTo(
+                x + heartSize / 2, y,
+                x, y,
+                x, y + topCurveHeight
+            );
+
+            ctx.fill();
+
+            return canvas;
+        }
+
+        function generateAllIcons() {
+            const sizes = [
+                { size: 192, name: 'pwa-192x192.png' },
+                { size: 512, name: 'pwa-512x512.png' },
+                { size: 180, name: 'apple-touch-icon.png' }
+            ];
+
+            const previewDiv = document.getElementById('preview');
+            previewDiv.innerHTML = '';
+
+            sizes.forEach(({ size, name }) => {
+                const canvas = generateIcon(size);
+                const container = document.createElement('div');
+                container.className = 'icon-preview';
+
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png');
+                img.width = 150;
+                img.alt = name;
+
+                const label = document.createElement('p');
+                label.innerHTML = `<strong>${name}</strong><br>${size}x${size}`;
+
+                const downloadBtn = document.createElement('button');
+                downloadBtn.textContent = '下載';
+                downloadBtn.onclick = () => {
+                    const link = document.createElement('a');
+                    link.download = name;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                };
+
+                container.appendChild(img);
+                container.appendChild(label);
+                container.appendChild(downloadBtn);
+                previewDiv.appendChild(container);
+            });
+        }
+
+        // 自動生成圖示
+        window.onload = () => {
+            generateAllIcons();
+        };
+    </script>
+</body>
+</html>
