@@ -7,8 +7,30 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // Validate environment variables
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  console.error('❌ Supabase 環境變數缺失！');
+  console.error('VITE_SUPABASE_URL:', SUPABASE_URL ? '✅ 已設定' : '❌ 未設定');
+  console.error('VITE_SUPABASE_PUBLISHABLE_KEY:', SUPABASE_PUBLISHABLE_KEY ? '✅ 已設定' : '❌ 未設定');
+  console.error('\n請在 Vercel 設定環境變數：');
+  console.error('Settings → Environment Variables → Add');
+
+  // 在頁面上顯示錯誤
+  document.body.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; font-family: system-ui;">
+      <div style="max-width: 600px; padding: 30px; background: #fee; border: 2px solid #f00; border-radius: 10px;">
+        <h1 style="color: #c00; margin: 0 0 20px 0;">⚠️ 環境變數未設定</h1>
+        <p style="margin: 0 0 15px 0;">請在 Vercel 設定以下環境變數：</p>
+        <ul style="margin: 0 0 15px 0; padding-left: 20px;">
+          <li><code>VITE_SUPABASE_URL</code></li>
+          <li><code>VITE_SUPABASE_PUBLISHABLE_KEY</code></li>
+          <li><code>VITE_SUPABASE_PROJECT_ID</code></li>
+        </ul>
+        <p style="margin: 0;">設定後記得點擊 <strong>Redeploy</strong> 重新部署！</p>
+      </div>
+    </div>
+  `;
+
   throw new Error(
-    '缺少 Supabase 環境變數。請確認 .env 檔案包含 VITE_SUPABASE_URL 和 VITE_SUPABASE_PUBLISHABLE_KEY'
+    '缺少 Supabase 環境變數。請在 Vercel 設定環境變數後重新部署。'
   );
 }
 
