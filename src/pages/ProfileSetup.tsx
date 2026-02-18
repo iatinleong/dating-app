@@ -219,14 +219,6 @@ const ProfileSetup = () => {
         throw new Error("未登入");
       }
 
-      // Upload photos first
-      const photoUrls: string[] = [];
-      for (let i = 0; i < profileData.photos.length; i++) {
-        const photoUrl = await uploadPhoto(profileData.photos[i], user.id);
-        photoUrls.push(photoUrl);
-        await addPhotoRecord(photoUrl, i);
-      }
-
       // Prepare profile data
       const profilePayload = {
         nickname: profileData.nickname,
@@ -249,8 +241,16 @@ const ProfileSetup = () => {
         bio: profileData.bio,
       };
 
-      // Save profile to Supabase
+      // Create profile FIRST (must exist before photos can reference it)
       await upsertProfile(profilePayload);
+
+      // Upload photos AFTER profile exists
+      const photoUrls: string[] = [];
+      for (let i = 0; i < profileData.photos.length; i++) {
+        const photoUrl = await uploadPhoto(profileData.photos[i], user.id);
+        photoUrls.push(photoUrl);
+        await addPhotoRecord(photoUrl, i);
+      }
 
       toast({
         title: "個人資料已建立！",
