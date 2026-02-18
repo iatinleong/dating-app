@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,7 @@ interface ProfileData {
 const ProfileSetup = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(1);
   const [profileData, setProfileData] = useState<ProfileData>({
     nickname: "",
@@ -53,6 +54,25 @@ const ProfileSetup = () => {
 
   const updateField = (field: keyof ProfileData, value: any) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newPhotos = Array.from(files);
+      setProfileData(prev => ({
+        ...prev,
+        photos: [...prev.photos, ...newPhotos]
+      }));
+      toast({
+        title: "照片已上傳",
+        description: `已選擇 ${newPhotos.length} 張照片`,
+      });
+    }
+  };
+
+  const triggerPhotoUpload = () => {
+    fileInputRef.current?.click();
   };
 
   const handleNext = () => {
@@ -180,26 +200,58 @@ const ProfileSetup = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="location">地點 *</Label>
-                  <Input
-                    id="location"
-                    placeholder="例如：台北市"
-                    value={profileData.location}
-                    onChange={(e) => updateField("location", e.target.value)}
-                  />
+                  <Select value={profileData.location} onValueChange={(value) => updateField("location", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇縣市" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="台北市">台北市</SelectItem>
+                      <SelectItem value="新北市">新北市</SelectItem>
+                      <SelectItem value="桃園市">桃園市</SelectItem>
+                      <SelectItem value="台中市">台中市</SelectItem>
+                      <SelectItem value="台南市">台南市</SelectItem>
+                      <SelectItem value="高雄市">高雄市</SelectItem>
+                      <SelectItem value="基隆市">基隆市</SelectItem>
+                      <SelectItem value="新竹市">新竹市</SelectItem>
+                      <SelectItem value="嘉義市">嘉義市</SelectItem>
+                      <SelectItem value="新竹縣">新竹縣</SelectItem>
+                      <SelectItem value="苗栗縣">苗栗縣</SelectItem>
+                      <SelectItem value="彰化縣">彰化縣</SelectItem>
+                      <SelectItem value="南投縣">南投縣</SelectItem>
+                      <SelectItem value="雲林縣">雲林縣</SelectItem>
+                      <SelectItem value="嘉義縣">嘉義縣</SelectItem>
+                      <SelectItem value="屏東縣">屏東縣</SelectItem>
+                      <SelectItem value="宜蘭縣">宜蘭縣</SelectItem>
+                      <SelectItem value="花蓮縣">花蓮縣</SelectItem>
+                      <SelectItem value="台東縣">台東縣</SelectItem>
+                      <SelectItem value="澎湖縣">澎湖縣</SelectItem>
+                      <SelectItem value="金門縣">金門縣</SelectItem>
+                      <SelectItem value="連江縣">連江縣</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="photos">照片 *</Label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
+                  <div
+                    className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer"
+                    onClick={triggerPhotoUpload}
+                  >
                     <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground mb-2">點擊上傳照片</p>
-                    <p className="text-xs text-muted-foreground">建議上傳至少 3 張照片</p>
+                    <p className="text-xs text-muted-foreground">
+                      {profileData.photos.length > 0
+                        ? `已選擇 ${profileData.photos.length} 張照片`
+                        : "建議上傳至少 3 張照片"}
+                    </p>
                     <Input
+                      ref={fileInputRef}
                       id="photos"
                       type="file"
                       multiple
                       accept="image/*"
                       className="hidden"
+                      onChange={handlePhotoUpload}
                     />
                   </div>
                 </div>
